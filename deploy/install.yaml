@@ -10,14 +10,6 @@ metadata:
     app.kubernetes.io/managed-by: alma-operator
 ---
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: alma
-  labels:
-    app.kubernetes.io/name: alma
-    app.kubernetes.io/managed-by: alma-operator
----
-apiVersion: v1
 kind: Secret
 metadata:
   name: alma-operator-config
@@ -33,18 +25,6 @@ kind: Secret
 metadata:
   name: ghcr-creds
   namespace: alma-system
-  labels:
-    app.kubernetes.io/name: alma-operator
-type: kubernetes.io/dockerconfigjson
-stringData:
-  .dockerconfigjson: |
-    {"auths":{"ghcr.io":{"username":"alma-security","password":"<GITHUB_TOKEN>"}}}
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: ghcr-creds
-  namespace: alma
   labels:
     app.kubernetes.io/name: alma-operator
 type: kubernetes.io/dockerconfigjson
@@ -127,7 +107,7 @@ spec:
           image: ghcr.io/alma-security/alma-operator:0.0.1
           imagePullPolicy: Always
           args:
-            - --namespace=alma
+            - --namespace=alma-system
             - --github-repo=alma-security/alma-sensor
             - --poll-interval=1m
             - --sensor-image=ghcr.io/alma-security/alma-sensor
