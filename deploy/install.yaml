@@ -1,0 +1,130 @@
+# Alma Operator - Single YAML install
+# kubectl apply -f https://github.com/alma-security/alma-operator/releases/latest/download/install.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+    app.kubernetes.io/managed-by: alma-operator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alma-operator
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alma-operator
+  labels:
+    app.kubernetes.io/name: alma-operator
+rules:
+  # Namespace management
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "create"]
+  # Core resources for sensor/collector
+  - apiGroups: [""]
+    resources: ["serviceaccounts", "configmaps", "services", "pods", "nodes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Workloads
+  - apiGroups: ["apps"]
+    resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # RBAC for creating sensor/collector roles
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alma-operator
+  labels:
+    app.kubernetes.io/name: alma-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: alma-operator
+subjects:
+  - kind: ServiceAccount
+    name: alma-operator
+    namespace: alma-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alma-operator-config
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+type: Opaque
+stringData:
+  # GitHub token for private repos (optional for public repos)
+  # Replace with your token or leave empty for public repos
+  github-token: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alma-operator
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+    app.kubernetes.io/instance: alma-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: alma-operator
+      app.kubernetes.io/instance: alma-operator
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: alma-operator
+        app.kubernetes.io/instance: alma-operator
+    spec:
+      serviceAccountName: alma-operator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        fsGroup: 65532
+      containers:
+        - name: operator
+          image: ghcr.io/alma-security/alma-operator:0.0.1
+          imagePullPolicy: Always
+          args:
+            - --namespace=alma
+            - --github-repo=alma-security/alma-sensor
+            - --poll-interval=1m
+            - --sensor-image=public.ecr.aws/r1b5k6e6/alma-sensor
+            - --collector-image=public.ecr.aws/r1b5k6e6/alma-collector
+            - --v=2
+          env:
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: alma-operator-config
+                  key: github-token
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      nodeSelector:
+        kubernetes.io/os: linux
+
