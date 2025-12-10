@@ -1,5 +1,5 @@
 # Alma Operator - Single YAML install
-# kubectl apply -f https://github.com/alma-security/alma-operator/releases/latest/download/install.yaml
+# Do not apply directly - use install.sh which injects the token
 ---
 apiVersion: v1
 kind: Namespace
@@ -8,6 +8,49 @@ metadata:
   labels:
     app.kubernetes.io/name: alma-operator
     app.kubernetes.io/managed-by: alma-operator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: alma
+  labels:
+    app.kubernetes.io/name: alma
+    app.kubernetes.io/managed-by: alma-operator
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alma-operator-config
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+type: Opaque
+stringData:
+  github-token: "<GITHUB_TOKEN>"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-creds
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: |
+    {"auths":{"ghcr.io":{"username":"alma-security","password":"<GITHUB_TOKEN>"}}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ghcr-creds
+  namespace: alma
+  labels:
+    app.kubernetes.io/name: alma-operator
+type: kubernetes.io/dockerconfigjson
+stringData:
+  .dockerconfigjson: |
+    {"auths":{"ghcr.io":{"username":"alma-security","password":"<GITHUB_TOKEN>"}}}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -24,19 +67,15 @@ metadata:
   labels:
     app.kubernetes.io/name: alma-operator
 rules:
-  # Namespace management
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "watch", "create"]
-  # Core resources for sensor/collector
   - apiGroups: [""]
-    resources: ["serviceaccounts", "configmaps", "services", "pods", "nodes"]
+    resources: ["serviceaccounts", "configmaps", "services", "pods", "nodes", "secrets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Workloads
   - apiGroups: ["apps"]
     resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # RBAC for creating sensor/collector roles
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
@@ -55,19 +94,6 @@ subjects:
   - kind: ServiceAccount
     name: alma-operator
     namespace: alma-system
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: alma-operator-config
-  namespace: alma-system
-  labels:
-    app.kubernetes.io/name: alma-operator
-type: Opaque
-stringData:
-  # GitHub token for private repos (optional for public repos)
-  # Replace with your token or leave empty for public repos
-  github-token: ""
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -90,6 +116,8 @@ spec:
         app.kubernetes.io/instance: alma-operator
     spec:
       serviceAccountName: alma-operator
+      imagePullSecrets:
+        - name: ghcr-creds
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -102,8 +130,8 @@ spec:
             - --namespace=alma
             - --github-repo=alma-security/alma-sensor
             - --poll-interval=1m
-            - --sensor-image=public.ecr.aws/r1b5k6e6/alma-sensor
-            - --collector-image=public.ecr.aws/r1b5k6e6/alma-collector
+            - --sensor-image=ghcr.io/alma-security/alma-sensor
+            - --collector-image=ghcr.io/alma-security/alma-collector
             - --v=2
           env:
             - name: GITHUB_TOKEN
@@ -111,7 +139,6 @@ spec:
                 secretKeyRef:
                   name: alma-operator-config
                   key: github-token
-                  optional: true
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -127,4 +154,3 @@ spec:
               memory: 128Mi
       nodeSelector:
         kubernetes.io/os: linux
-
