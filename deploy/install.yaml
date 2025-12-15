@@ -105,12 +105,12 @@ spec:
         fsGroup: 65532
       containers:
         - name: operator
-          image: ghcr.io/alma-security/alma-operator:0.0.3
+          image: ghcr.io/alma-security/alma-operator:0.0.4
           imagePullPolicy: Always
           args:
             - --namespace=alma-system
             - --config-repo=alma-security/alma-configs
-            - --poll-interval=1m
+            - --poll-interval=30s
             - --v=2
           env:
             - name: GITHUB_TOKEN
