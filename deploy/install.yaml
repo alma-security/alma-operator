@@ -108,10 +108,8 @@ spec:
           imagePullPolicy: Always
           args:
             - --namespace=alma-system
-            - --github-repo=alma-security/alma-sensor
+            - --config-repo=alma-security/alma-configs
             - --poll-interval=1m
-            - --sensor-image=ghcr.io/alma-security/alma-sensor
-            - --collector-image=ghcr.io/alma-security/alma-collector
             - --v=2
           env:
             - name: GITHUB_TOKEN
