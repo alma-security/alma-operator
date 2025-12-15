@@ -1,5 +1,5 @@
 # Alma Operator - Single YAML install
-# Do not apply directly - use install.sh which injects the token
+# Do not apply directly - use install.sh which injects the token and customer-id
 ---
 apiVersion: v1
 kind: Namespace
@@ -19,6 +19,7 @@ metadata:
 type: Opaque
 stringData:
   github-token: "<GITHUB_TOKEN>"
+  customer-id: "<CUSTOMER_ID>"
 ---
 apiVersion: v1
 kind: Secret
@@ -117,6 +118,11 @@ spec:
                 secretKeyRef:
                   name: alma-operator-config
                   key: github-token
+            - name: CUSTOMER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: alma-operator-config
+                  key: customer-id
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
