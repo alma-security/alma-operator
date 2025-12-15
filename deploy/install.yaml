@@ -48,18 +48,59 @@ metadata:
   labels:
     app.kubernetes.io/name: alma-operator
 rules:
+  # Namespaces - only needs to ensure alma-system exists
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "watch", "create"]
+  # Core resources the operator manages
   - apiGroups: [""]
-    resources: ["serviceaccounts", "configmaps", "services", "pods", "nodes", "secrets"]
+    resources: ["serviceaccounts", "configmaps", "services"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # Pods - read-only for status checking
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Nodes - read-only for sensor node info
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  # Workloads the operator creates
   - apiGroups: ["apps"]
-    resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+    resources: ["deployments", "daemonsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  # RBAC - for sensor/collector service accounts (no delete)
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+# Namespace-scoped secrets access (more secure than cluster-wide)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alma-operator-secrets
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alma-operator-secrets
+  namespace: alma-system
+  labels:
+    app.kubernetes.io/name: alma-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alma-operator-secrets
+subjects:
+  - kind: ServiceAccount
+    name: alma-operator
+    namespace: alma-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
