@@ -48,7 +48,7 @@ metadata:
   labels:
     app.kubernetes.io/name: alma-operator
 rules:
-  # Namespaces - only needs to ensure alma-system exists
+  # Namespaces - ensure alma-system exists
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get", "list", "watch", "create"]
@@ -56,29 +56,22 @@ rules:
   - apiGroups: [""]
     resources: ["serviceaccounts", "configmaps", "services"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # Pods - read-only for status checking
+  # Pods and nodes - for status and sensor placement
   - apiGroups: [""]
-    resources: ["pods"]
+    resources: ["pods", "nodes"]
     verbs: ["get", "list", "watch"]
-  # Nodes - read-only for sensor node info
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  # Workloads the operator creates
+  # Workloads - operator creates deployments and daemonsets
   - apiGroups: ["apps"]
     resources: ["deployments", "daemonsets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # RBAC - for sensor/collector service accounts (no delete)
+  # Workloads - operator grants these to sensor/collector (read-only)
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
+  # RBAC - create roles for sensor/collector
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
-  # Permissions the operator grants to sensor/collector (must hold these to grant them)
-  - apiGroups: [""]
-    resources: ["pods", "services", "namespaces", "nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
-    verbs: ["get", "list", "watch"]
 ---
 # Namespace-scoped secrets access (more secure than cluster-wide)
 apiVersion: rbac.authorization.k8s.io/v1
