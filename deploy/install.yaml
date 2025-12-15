@@ -72,6 +72,13 @@ rules:
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings"]
     verbs: ["get", "list", "watch", "create", "update", "patch"]
+  # Permissions the operator grants to sensor/collector (must hold these to grant them)
+  - apiGroups: [""]
+    resources: ["pods", "services", "namespaces", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+    verbs: ["get", "list", "watch"]
 ---
 # Namespace-scoped secrets access (more secure than cluster-wide)
 apiVersion: rbac.authorization.k8s.io/v1
