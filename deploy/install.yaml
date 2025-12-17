@@ -136,7 +136,7 @@ spec:
         fsGroup: 65532
       containers:
         - name: operator
-          image: ghcr.io/alma-security/alma-operator:0.0.14
+          image: ghcr.io/alma-security/alma-operator:0.0.15
           imagePullPolicy: Always
           args:
             - --namespace=alma-system
